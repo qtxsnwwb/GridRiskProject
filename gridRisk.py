@@ -11,7 +11,7 @@ def getPreviousRecord(currentTime, mmsi):
     :param mmsi: 船舶MMSI
     :return: 获取的记录(Series)
     """
-    previousTime = str(currentTime - 300)     #前一时刻时间
+    previousTime = str(int(currentTime) - 300)     #前一时刻时间
     file_path = "E:\成山头数据\\result\\2018-01-01" + "\\" + previousTime + ".csv"
     rankings_colname = ['Mmsi', 'Latitude', 'Longitude', 'Sog', 'Cog']
     df = pd.read_csv(file_path, header=None, names=rankings_colname)
@@ -24,7 +24,7 @@ def getPreviousRecord(currentTime, mmsi):
     if previousTime != '0':
         getPreviousRecord(previousTime, mmsi)
     else:
-        return pd.Series()
+        return None
 
 def calVCRO_each(df, time, resultList):
     """
@@ -44,22 +44,25 @@ def calVCRO_each(df, time, resultList):
                 # 判断两船是否有前一时刻记录，若无则直接跳过，若有则继续下一步判断
                 previousRecord_1 = getPreviousRecord(time, df.iloc[i, 0])
                 previousRecord_2 = getPreviousRecord(time, df.iloc[j, 0])
-                if not previousRecord_1.empty and not previousRecord_2.empty:
-                    # 判断两船之间相位的正负，若为负(False)则无风险，直接跳过，若为正(True)则计算VCRO值
-                    phase_plus_minus = vm.getPhase_plus_minus(df.iloc[i, 1], df.iloc[i, 2], df.iloc[j, 1],
-                                                              df.iloc[j, 2], df.iloc[i, 4], df.iloc[j, 4],
-                                                              previousRecord_1.iloc[0], previousRecord_1.iloc[1],
-                                                              previousRecord_2.iloc[0], previousRecord_2.iloc[1])
-                    # phase_plus_minus = True
-                    if phase_plus_minus == True:
-                        relative_speed = vm.getRelativeSpeed(df.iloc[i, 3], df.iloc[j, 3], df.iloc[i, 4], df.iloc[j, 4])
-                        phase = vm.getPhase(df.iloc[i, 1], df.iloc[i, 2], df.iloc[j, 1], df.iloc[j, 2], df.iloc[i, 4],
-                                            df.iloc[j, 4], previousRecord_1.iloc[0], previousRecord_1.iloc[1],
-                                            previousRecord_2.iloc[0], previousRecord_2.iloc[1])
-                        vcro = vm.getVCRO(distance, relative_speed, phase)
-                        vcro = 1 - math.exp(-vcro / 100)
-                        resultList[i][1].append(vcro)
-                        resultList[j][1].append(vcro)
+                if previousRecord_1 is None or previousRecord_2 is None:
+                    continue
+                else:
+                    if len(previousRecord_1) != 0 and len(previousRecord_2) != 0:
+                        # 判断两船之间相位的正负，若为负(False)则无风险，直接跳过，若为正(True)则计算VCRO值
+                        phase_plus_minus = vm.getPhase_plus_minus(df.iloc[i, 1], df.iloc[i, 2], df.iloc[j, 1],
+                                                                  df.iloc[j, 2], df.iloc[i, 4], df.iloc[j, 4],
+                                                                  previousRecord_1.iloc[0], previousRecord_1.iloc[1],
+                                                                  previousRecord_2.iloc[0], previousRecord_2.iloc[1])
+                        # phase_plus_minus = True
+                        if phase_plus_minus == True:
+                            relative_speed = vm.getRelativeSpeed(df.iloc[i, 3], df.iloc[j, 3], df.iloc[i, 4], df.iloc[j, 4])
+                            phase = vm.getPhase(df.iloc[i, 1], df.iloc[i, 2], df.iloc[j, 1], df.iloc[j, 2], df.iloc[i, 4],
+                                                df.iloc[j, 4], previousRecord_1.iloc[0], previousRecord_1.iloc[1],
+                                                previousRecord_2.iloc[0], previousRecord_2.iloc[1])
+                            vcro = vm.getVCRO(distance, relative_speed, phase)
+                            vcro = 1 - math.exp(-vcro / 100)
+                            resultList[i][1].append(vcro)
+                            resultList[j][1].append(vcro)
 
 def calRisk_each(resultList, riskList):
     """
@@ -90,6 +93,8 @@ def getRisk(time):
     :return: 该时刻全部船舶风险值(List)
     """
     file_path = "E:\成山头数据\\result\\2018-01-01\\" + str(time) + ".csv"
+    if not os.path.exists(file_path):      #若文件不存在直接返回空列表
+        return []
     rankings_colname = ['Mmsi', 'Latitude', 'Longitude', 'Sog', 'Cog']
     df = pd.read_csv(file_path, header=None, names=rankings_colname)
     rowsNum_df = df.shape[0]

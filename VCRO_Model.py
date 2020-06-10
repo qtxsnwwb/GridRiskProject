@@ -95,8 +95,20 @@ def getPhase_plus_minus(lat1, lon1, lat2, lon2, c1, c2, lat1_past, lon1_past, la
     k1 = getK(c1)
     k2 = getK(c2)
     #计算两船当前法线斜率
-    k1_normal = -1 / k1
-    k2_normal = -1 / k2
+    k1_normal = 0.0
+    k2_normal = 0.0
+    if k1 == 0:
+        k1_normal = np.inf
+    elif k1 == np.inf:
+        k1_normal = 0
+    else:
+        k1_normal = -1 / k1
+    if k2 == 0:
+        k2_normal == np.inf
+    elif k2 == np.inf:
+        k2_normal = 0
+    else:
+        k2_normal = -1 / k2
     #计算两船直线方程交点
     b1 = lat1 - k1 * lon1
     b2 = lat2 - k2 * lon2
@@ -109,10 +121,24 @@ def getPhase_plus_minus(lat1, lon1, lat2, lon2, c1, c2, lat1_past, lon1_past, la
     #判断是否有碰撞风险
     #两船前一位置点与交点均需位于各自法线两侧则有风险，否则无风险
     flag1 = flag2 = False
-    if (k1_normal * x_cross + b1_normal < y_cross and k1_normal * lon1_past + b1_normal > lat1_past) or (k1_normal * x_cross + b1_normal > y_cross and k1_normal * lon1_past + b1_normal < lat1_past):
-        flag1 = True
-    if (k2_normal * x_cross + b2_normal < y_cross and k2_normal * lon2_past + b2_normal > lat2_past) or (k2_normal * x_cross + b2_normal > y_cross and k2_normal * lon2_past + b2_normal < lat2_past):
-        flag2 = True
+    if k1_normal == np.inf:
+        if (lon1_past < lon1 and x_cross > lon1) or (lon1_past > lon1 and x_cross < lon1):
+            flag1 = True
+    elif k1_normal == 0:
+        if (lat1_past < lat1 and y_cross > lat1) or (lat1_past > lat1 and y_cross < lat1):
+            flag1 = True
+    else:
+        if (k1_normal * x_cross + b1_normal < y_cross and k1_normal * lon1_past + b1_normal > lat1_past) or (k1_normal * x_cross + b1_normal > y_cross and k1_normal * lon1_past + b1_normal < lat1_past):
+            flag1 = True
+    if k2_normal == np.inf:
+        if (lon2_past < lon2 and x_cross > lon2) or (lon2_past > lon2 and x_cross < lon2):
+            flag2 = True
+    elif k2_normal == 0:
+        if (lat2_past < lat2 and y_cross > lat2) or (lat2_past > lat2 and y_cross < lat2):
+            flag2 = True
+    else:
+        if (k2_normal * x_cross + b2_normal < y_cross and k2_normal * lon2_past + b2_normal > lat2_past) or (k2_normal * x_cross + b2_normal > y_cross and k2_normal * lon2_past + b2_normal < lat2_past):
+            flag2 = True
     return flag1 and flag2
 
 def getK(c):
@@ -130,6 +156,8 @@ def getK(c):
         k = tan((270 - c)*pi/180)
     elif 270 <= c < 360:
         k = -tan((c - 270)*pi/180)
+    elif c == 90 or c == 270:
+        k = np.inf
     return k
 
 def getVCRO(distance, relative_speed, phase):
