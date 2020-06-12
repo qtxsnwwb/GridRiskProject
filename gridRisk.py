@@ -3,6 +3,9 @@ import os
 import sys
 import math
 import VCRO_Model as vm
+import csv
+import matplotlib.pyplot as plt
+import numpy as np
 
 def getPreviousRecord(currentTime, mmsi):
     """
@@ -60,7 +63,8 @@ def calVCRO_each(df, time, resultList):
                                                 df.iloc[j, 4], previousRecord_1.iloc[0], previousRecord_1.iloc[1],
                                                 previousRecord_2.iloc[0], previousRecord_2.iloc[1])
                             vcro = vm.getVCRO(distance, relative_speed, phase)
-                            vcro = 1 - math.exp(-vcro / 100)
+                            # vcro = 1 - math.exp(-vcro / 100)
+                            vcro = 1 - math.exp(-vcro)
                             resultList[i][1].append(vcro)
                             resultList[j][1].append(vcro)
 
@@ -111,6 +115,10 @@ def getRisk(time):
     calRisk_each(resultList, riskList)
     return riskList
 
+def normfun(x, mu, sigma):
+    pdf = np.exp(-((x-mu) ** 2)/(2 * sigma ** 2)/(sigma * np.sqrt(2 * np.pi)))
+    return pdf
+
 if __name__ == '__main__':
     #-----------------------------
     #编程时日期是固定的，后期需修改
@@ -119,3 +127,19 @@ if __name__ == '__main__':
         for j in range(i, i+3600, 900):
             print(getRisk(j))
         print("------------")
+    # with open("E:\\temp.csv", "a", newline="") as filewriter:
+    #     writer = csv.writer(filewriter)
+    #     writer.writerow(testList)
+    #     filewriter.close()
+    # df = pd.read_csv("E:\\temp.csv", header=None)
+    # print(df)
+    # print(df.mean(axis=1)[0])
+    # data = df.iloc[0, :]
+    # mean = data.mean()
+    # std = data.std()
+    # x = np.arange(0, 100, 20)
+    # y = normfun(x, mean, std)
+    # # plt.plot(x, y)
+    # print(max(data))
+    # plt.hist(x=df.iloc[0, :], bins=65, range=[0, 65], color='steelblue', edgecolor='black')
+    # plt.show()
