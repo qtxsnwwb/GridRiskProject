@@ -115,7 +115,7 @@ def cubic_spline_cog(X, Y, t):
     #对待插值航向做初步处理
     for index in range(Y.size-1):
         if abs(Y.iloc[index + 1] - Y.iloc[index]) >= 180:
-            if Y.iloc[index + 1] > Y.iloc[index]:     #此处存疑
+            if Y.iloc[index + 1] > Y.iloc[index]:     
                 Y.iloc[index] = Y.iloc[index] + 360
             else:
                 Y.iloc[index + 1] = Y.iloc[index + 1] + 360

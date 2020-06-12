@@ -156,7 +156,7 @@ def getK(c):
         k = tan((270 - c)*pi/180)
     elif 270 <= c < 360:
         k = -tan((c - 270)*pi/180)
-    elif c == 90 or c == 270:
+    elif c == 0 or c == 180:
         k = np.inf
     return k
 
