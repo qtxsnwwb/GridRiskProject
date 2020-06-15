@@ -90,13 +90,14 @@ def calRisk_each(resultList, riskList):
                     temp -= temp * vcroList[j]
             riskList[i].append(risk)
 
-def getRisk(time):
+def getRisk(date, time):
     """
     获取指定时间的全部船舶风险值
+    :param date: 指定的日期(str)
     :param time: 指定的时间(int)
     :return: 该时刻全部船舶风险值(List)
     """
-    file_path = "E:\成山头数据\\result\\2018-01-01\\" + str(time) + ".csv"
+    file_path = "E:\成山头数据\\result\\" + date + "\\" + str(time) + ".csv"
     if not os.path.exists(file_path):      #若文件不存在直接返回空列表
         return []
     rankings_colname = ['Mmsi', 'Latitude', 'Longitude', 'Sog', 'Cog']
@@ -108,25 +109,48 @@ def getRisk(time):
         resultList.append(tempList)
     riskList = []      #创建存储各条船舶风险值的List([[mmsi, 风险值], ........])
     for i in range(rowsNum_df):
-        tempList = [df.iloc[i, 0]]
+        tempList = [df.iloc[i, 0], df.iloc[i, 1], df.iloc[i, 2]]
         riskList.append(tempList)
     #风险值计算
     calVCRO_each(df, time, resultList)      #计算各船VCRO值，并存入resultList
     calRisk_each(resultList, riskList)
     return riskList
 
-def normfun(x, mu, sigma):
-    pdf = np.exp(-((x-mu) ** 2)/(2 * sigma ** 2)/(sigma * np.sqrt(2 * np.pi)))
-    return pdf
+def writeRisk(date):
+    """
+    将风险值写入CSV文件
+    :param date: 待写入数据的日期
+    :return:
+    """
+    # 创建目录
+    dir_result_path = "E:\成山头数据\\risk\\" + date  # 结果存储目录路径
+    os.mkdir(dir_result_path)
+    for i in range(900, 86400, 3600):
+        for j in range(i, i+3600, 900):
+            riskList = getRisk(date, j)      #得到的风险结果
+            file_path = dir_result_path + "\\" + str(i) + ".csv"
+            with open(file_path, "a", newline="") as filewriter:
+                writer = csv.writer(filewriter)
+                for risk in riskList:
+                    writer.writerow(risk)
+                filewriter.close()
+        print("{}-{}风险写入完毕".format(i, i+3600))
+
+# def normfun(x, mu, sigma):
+#     pdf = np.exp(-((x-mu) ** 2)/(2 * sigma ** 2)/(sigma * np.sqrt(2 * np.pi)))
+#     return pdf
 
 if __name__ == '__main__':
     #-----------------------------
     #编程时日期是固定的，后期需修改
     #-----------------------------
-    for i in range(900, 86400, 3600):
-        for j in range(i, i+3600, 900):
-            print(getRisk(j))
-        print("------------")
+    writeRisk("2018-01-01")
+    #网格化
+    #所有日期的所有船舶的所有经纬度作为考察范围，计算网格边界
+
+
+
+
     # with open("E:\\temp.csv", "a", newline="") as filewriter:
     #     writer = csv.writer(filewriter)
     #     writer.writerow(testList)
