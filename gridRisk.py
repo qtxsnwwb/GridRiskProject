@@ -7,15 +7,21 @@ import csv
 import matplotlib.pyplot as plt
 import numpy as np
 
-def getPreviousRecord(currentTime, mmsi):
+LAT_MAX = 37.8
+LON_MAX = 123.26
+LAT_MIN = 37.1
+LON_MIN = 122.5
+
+def getPreviousRecord(currentTime, mmsi, date):
     """
     获取指定MMSI船舶的前一时刻记录
     :param currentTime: 当前时刻时间
     :param mmsi: 船舶MMSI
+    :param date: 当前日期
     :return: 获取的记录(Series)
     """
     previousTime = str(int(currentTime) - 300)     #前一时刻时间
-    file_path = "E:\成山头数据\\result\\2018-01-01" + "\\" + previousTime + ".csv"
+    file_path = "E:\成山头数据\\result\\" + date + "\\" + previousTime + ".csv"
     rankings_colname = ['Mmsi', 'Latitude', 'Longitude', 'Sog', 'Cog']
     df = pd.read_csv(file_path, header=None, names=rankings_colname)
     #遍历每条船舶
@@ -25,16 +31,17 @@ def getPreviousRecord(currentTime, mmsi):
             return df.iloc[i, :]
     #没有找到则递归找再前一个时刻文件
     if previousTime != '0':
-        getPreviousRecord(previousTime, mmsi)
+        getPreviousRecord(previousTime, mmsi, date)
     else:
         return None
 
-def calVCRO_each(df, time, resultList):
+def calVCRO_each(df, time, resultList, date):
     """
     计算每条船舶的VCRO值
     :param df: 轨迹数据(DataFrame)
     :param time: 当前时刻
     :param resultList: 存储各条船舶VCRO值的List([[mmsi, [VCRO1，VCRO2，....]], ........])
+    :param date: 日期
     :return:
     """
     rowsNum_df = df.shape[0]
@@ -45,8 +52,8 @@ def calVCRO_each(df, time, resultList):
             # 判断两船之间距离是否小于6nm,若是则进行下一步判断，若不是直接跳过
             if distance < 6:
                 # 判断两船是否有前一时刻记录，若无则直接跳过，若有则继续下一步判断
-                previousRecord_1 = getPreviousRecord(time, df.iloc[i, 0])
-                previousRecord_2 = getPreviousRecord(time, df.iloc[j, 0])
+                previousRecord_1 = getPreviousRecord(time, df.iloc[i, 0], date)
+                previousRecord_2 = getPreviousRecord(time, df.iloc[j, 0], date)
                 if previousRecord_1 is None or previousRecord_2 is None:
                     continue
                 else:
@@ -64,7 +71,7 @@ def calVCRO_each(df, time, resultList):
                                                 previousRecord_2.iloc[0], previousRecord_2.iloc[1])
                             vcro = vm.getVCRO(distance, relative_speed, phase)
                             # vcro = 1 - math.exp(-vcro / 100)
-                            vcro = 1 - math.exp(-vcro)
+                            vcro = 1 - math.exp(-vcro)         #此处的参数是动态获取的，不同的数据集需要重新敲定
                             resultList[i][1].append(vcro)
                             resultList[j][1].append(vcro)
 
@@ -112,7 +119,7 @@ def getRisk(date, time):
         tempList = [df.iloc[i, 0], df.iloc[i, 1], df.iloc[i, 2]]
         riskList.append(tempList)
     #风险值计算
-    calVCRO_each(df, time, resultList)      #计算各船VCRO值，并存入resultList
+    calVCRO_each(df, time, resultList, date)      #计算各船VCRO值，并存入resultList
     calRisk_each(resultList, riskList)
     return riskList
 
@@ -124,46 +131,129 @@ def writeRisk(date):
     """
     # 创建目录
     dir_result_path = "E:\成山头数据\\risk\\" + date  # 结果存储目录路径
-    os.mkdir(dir_result_path)
+    if not os.path.exists(dir_result_path):
+        os.mkdir(dir_result_path)
     for i in range(900, 86400, 3600):
         for j in range(i, i+3600, 900):
             riskList = getRisk(date, j)      #得到的风险结果
-            file_path = dir_result_path + "\\" + str(i) + ".csv"
+            file_path = dir_result_path + "\\" + str(j) + ".csv"
             with open(file_path, "a", newline="") as filewriter:
                 writer = csv.writer(filewriter)
                 for risk in riskList:
                     writer.writerow(risk)
                 filewriter.close()
-        print("{}-{}风险写入完毕".format(i, i+3600))
+            print("{}:{}-{}风险写入完毕".format(date, j, j+900))
+        print("---------------------------")
 
-# def normfun(x, mu, sigma):
-#     pdf = np.exp(-((x-mu) ** 2)/(2 * sigma ** 2)/(sigma * np.sqrt(2 * np.pi)))
-#     return pdf
+def gridPatition():
+    """
+    网格划分
+    :return: 网格边界（经纬度的最大和最小共四个值），网格划分行列数量
+    """
+    root_path = "E:\\成山头数据\\data"
+    latMax = 0
+    lonMax = 0
+    latMin = 10000
+    lonMin = 10000
+    dirs = os.listdir(root_path)
+    for dir in dirs:
+        dir_path = root_path + "\\" + str(dir)
+        files = os.listdir(dir_path)
+        for file in files:
+            file_path = dir_path + "\\" + str(file)
+            rankings_colname = ['Date_Time', 'Timestamp', 'Latitude', 'Longitude', 'Sog', 'Cog']
+            df = pd.read_csv(file_path, header=None, names=rankings_colname)
+            latMaxTemp = df.iloc[:, 2].max()
+            latMinTemp = df.iloc[:, 2].min()
+            lonMaxTemp = df.iloc[:, 3].max()
+            lonMinTemp = df.iloc[:, 3].min()
+            if latMaxTemp > latMax:
+                latMax = latMaxTemp
+            if latMin > latMinTemp:
+                latMin = latMinTemp
+            if lonMaxTemp > lonMax:
+                lonMax = lonMaxTemp
+            if lonMin > lonMinTemp:
+                lonMin = lonMinTemp
+    return latMax, lonMax, latMin, lonMin
+
+def constructGridMatrix():
+    """
+    构建水域网格化矩阵
+    :return:
+    """
+    length = vm.getDistance(LAT_MAX, LON_MAX, LAT_MAX, LON_MIN)  # 网格区域长度
+    width = vm.getDistance(LAT_MAX, LON_MAX, LAT_MIN, LON_MAX)  # 网格区域宽度
+    row_num = int(width / 6)  # 网格行数
+    column_num = int(length / 6)  # 网格列数
+
+    #------------------------------
+    #创建张量（全部日期）
+    #------------------------------
+
+    #遍历风险文件
+    root_path = "E:\成山头数据\\risk"
+    dirs = os.listdir(root_path)
+    for dir in dirs:
+        gridTensor = np.zeros((24, row_num, column_num))
+        tensor_index = 0
+        dir_path = root_path + "\\" + str(dir)
+        #遍历一日所有时刻的文件
+        gridArray = np.zeros((row_num, column_num))   # 创建水域网格化矩阵（初始值均为0）
+        for file in range(900, 87300, 900):
+            file_path = dir_path + "\\" + str(file) + ".csv"
+            rankings_colname = ['Mmsi', 'Latitude', 'Longitude', 'Risk']
+            df = pd.read_csv(file_path, header=None, names=rankings_colname)
+            #遍历某时刻所有风险记录，计算对应的风险矩阵（一个时刻一个风险矩阵）
+            for i in range(df.shape[0]):
+                if not np.isnan(df.iloc[i, 3]):
+                    row, column = generalID(df.iloc[i, 2], df.iloc[i, 1], column_num, row_num)
+                    if row == -1 and column == -1:
+                        continue
+                    gridArray[row][column] += df.iloc[i, 3]
+            if file % 3600 == 0:
+                if file != 86400:
+                    gridArray /= 4
+                    gridTensor[tensor_index, :, :] = gridArray   #将gridArray加入张量中
+                    tensor_index += 1
+                    gridArray = np.zeros((row_num, column_num))  #重新创建水域网格化矩阵（初始值均为0）
+                else:
+                    gridArray /= 3
+                    gridTensor[tensor_index, :, :] = gridArray   #将gridArray加入张量中
+    print(gridTensor)
+
+
+
+def generalID(lon, lat, column_num, row_num):
+    """
+    根据经纬度获取所在网格的位置
+    :param lon: 经度
+    :param lat: 纬度
+    :param column_num: 网格列数
+    :param row_num: 网格行数
+    :return: 所在网格位置（行列号）
+    """
+    #若在范围外的点，返回-1
+    if lon <= LON_MIN or lon >= LON_MAX or lat <= LAT_MIN or lat >= LAT_MAX:
+        return -1, -1
+    #把经度范围根据列数等分切割
+    column = 6
+    #把纬度范围根据行数等分切割
+    row = 6
+    #计算行列号
+    column = int(vm.getDistance(lat, lon, lat, LON_MIN) / column)
+    row = int(vm.getDistance(lat, lon, LAT_MAX, lon) / row)
+    return row, column
 
 if __name__ == '__main__':
-    #-----------------------------
-    #编程时日期是固定的，后期需修改
-    #-----------------------------
-    writeRisk("2018-01-01")
-    #网格化
-    #所有日期的所有船舶的所有经纬度作为考察范围，计算网格边界
+    # root_path = "E:\成山头数据\\data\\"
+    # dirs = os.listdir(root_path)
+    # for dir in dirs:
+    #     writeRisk(str(dir))
+    #网格化，此处获取网格边界，然后人为划分，不同的数据集需要重新敲定
+    # gridPatition()
+    #构建网格化水域张量
+    constructGridMatrix()
 
 
 
-
-    # with open("E:\\temp.csv", "a", newline="") as filewriter:
-    #     writer = csv.writer(filewriter)
-    #     writer.writerow(testList)
-    #     filewriter.close()
-    # df = pd.read_csv("E:\\temp.csv", header=None)
-    # print(df)
-    # print(df.mean(axis=1)[0])
-    # data = df.iloc[0, :]
-    # mean = data.mean()
-    # std = data.std()
-    # x = np.arange(0, 100, 20)
-    # y = normfun(x, mean, std)
-    # # plt.plot(x, y)
-    # print(max(data))
-    # plt.hist(x=df.iloc[0, :], bins=65, range=[0, 65], color='steelblue', edgecolor='black')
-    # plt.show()

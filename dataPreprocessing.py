@@ -215,11 +215,9 @@ def preprocessing(date):
     dir_result_path = "E:\成山头数据\\result\\" + date    #结果存储目录路径
     os.mkdir(dir_result_path)
     #遍历日期文件夹
-    dir_path = "E:\成山头数据\\" + date     #待读取文件目录路径
+    dir_path = "E:\成山头数据\\data\\" + date     #待读取文件目录路径
     files = os.listdir(dir_path)
-    # temp = 0
     for file in files:
-        # temp += 1
         file_path = dir_path + "\\" + str(file)
         rankings_colname = ['Date_Time', 'Timestamp', 'Latitude', 'Longitude', 'Sog', 'Cog']
         df = pd.read_csv(file_path, header=None, names=rankings_colname)
@@ -239,8 +237,6 @@ def preprocessing(date):
                 file_writer.close()
 
         print("{}预处理完毕".format(file_path))
-        # if temp == 50:
-        #     break
 
 def removeDuplicates(df):
     """
@@ -257,4 +253,7 @@ def removeDuplicates(df):
     return df
 
 if __name__ == '__main__':
-    preprocessing("2018-01-01")
+    root_path = "E:\成山头数据\\data\\"
+    dirs = os.listdir(root_path)
+    for dir in dirs:
+        preprocessing(str(dir))
