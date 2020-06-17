@@ -148,11 +148,11 @@ def getK(c):
     :return: 对应斜率
     """
     k = 0.0
-    if 0 <= c < 90:
+    if 0 < c < 90:
         k = tan((90 - c)*pi/180)
     elif 90 <= c < 180:
         k = -tan((c - 90)*pi/180)
-    elif 180 <= c < 270:
+    elif 180 < c < 270:
         k = tan((270 - c)*pi/180)
     elif 270 <= c < 360:
         k = -tan((c - 270)*pi/180)
