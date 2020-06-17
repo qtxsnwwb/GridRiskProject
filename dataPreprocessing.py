@@ -37,6 +37,55 @@ def medianFilter(tempSeries):
             tempSeries.iloc[index] = (tempList[int(len(tempList) / 2)] + tempList[int(len(tempList) / 2) - 1]) / 2
     return tempSeries
 
+def medianFilter_cog(tempSeries):
+    """
+    对待处理的数据列进行中值滤波数据去噪（航向）
+    :param tempSeries: 待处理数据列(Series)
+    :return: 处理后的数据列(Series)
+    """
+    for index in range(len(tempSeries)):
+        tempList = []       #存放每轮循环待中值滤波处理的数据
+        #先存放当前循环待处理的值
+        if not np.isnan(tempSeries.iloc[index]):
+            tempList.append(tempSeries.iloc[index])
+        #依次取出当前循环待处理值的前两个和后两个值存入tempList
+        if index + 1 <= len(tempSeries)-1:
+            if not np.isnan(tempSeries.iloc[index + 1]):
+                tempList.append(tempSeries.iloc[index + 1])
+        if index - 1 >= 0:
+            if not np.isnan(tempSeries.iloc[index - 1]):
+                tempList.append(tempSeries.iloc[index - 1])
+        if index + 2 <= len(tempSeries)-1:
+            if not np.isnan(tempSeries.iloc[index + 2]):
+                tempList.append(tempSeries.iloc[index + 2])
+        if index - 2 >= 0:
+            if not np.isnan(tempSeries.iloc[index - 2]):
+                tempList.append(tempSeries.iloc[index - 2])
+        tempList.sort()     #从小到大排序
+        #判断待处理数据是否存在在360左右变换，False为不存在，True为存在
+        flag1 = flag2 = False     #标志位
+        for i in range(len(tempList)):
+            if 350 <= tempList[i] <= 360:
+                flag1 = True
+            elif 0<= tempList[i] <= 10:
+                flag2 = True
+        #若待处理数据存在在360左右变换的情况，则将<360的数据+360
+        if flag1 == True and flag2 == True:
+            for i in range(len(tempList)):
+                if 0 <= tempList[i] <= 10:
+                    tempList[i] += 360
+        #判断中位数数量
+        result = 0.0
+        if len(tempList) % 2 != 0:
+            result = tempList[int(len(tempList) / 2)]
+        else:
+            result = (tempList[int(len(tempList) / 2)] + tempList[int(len(tempList) / 2) - 1]) / 2
+        if flag1 == True and flag2 == True:
+            if result / 360 >= 1:
+                result = result - 360
+        tempSeries.iloc[index] = result
+    return tempSeries
+
 def cutData_longInterval(df, list):
     """
     对缺失大量数据（数据发送间隔>0.5h）的情况进行数据切割
@@ -142,7 +191,7 @@ def preprocessing_each(df):
     df.iloc[:, 2] = medianFilter(df.iloc[:, 2].copy())
     df.iloc[:, 3] = medianFilter(df.iloc[:, 3].copy())
     df.iloc[:, 4] = medianFilter(df.iloc[:, 4].copy())
-    df.iloc[:, 5] = medianFilter(df.iloc[:, 5].copy())
+    df.iloc[:, 5] = medianFilter_cog(df.iloc[:, 5].copy())
     #3.寻找缺失值并插值（航速、航向、经纬度）
 
     #4.缺失大量数据，发送时间间隔超过0.5h，轨迹一分为二
