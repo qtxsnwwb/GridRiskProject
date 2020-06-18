@@ -182,6 +182,10 @@ def constructGridMatrix():
     构建水域网格化矩阵
     :return:
     """
+	global LAT_MAX
+	global LON_MAX
+	global LAT_MIN
+	global LON_MIN
     length = vm.getDistance(LAT_MAX, LON_MAX, LAT_MAX, LON_MIN)  # 网格区域长度
     width = vm.getDistance(LAT_MAX, LON_MAX, LAT_MIN, LON_MAX)  # 网格区域宽度
     row_num = int(width / 6)  # 网格行数
