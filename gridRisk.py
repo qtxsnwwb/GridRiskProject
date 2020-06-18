@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 LAT_MAX = 37.8
-LON_MAX = 123.26
+LON_MAX = 123.375
 LAT_MIN = 37.1
 LON_MIN = 122.5
 
@@ -185,7 +185,7 @@ def constructGridMatrix():
     length = vm.getDistance(LAT_MAX, LON_MAX, LAT_MAX, LON_MIN)  # 网格区域长度
     width = vm.getDistance(LAT_MAX, LON_MAX, LAT_MIN, LON_MAX)  # 网格区域宽度
     row_num = int(width / 6)  # 网格行数
-    column_num = int(length / 6)  # 网格列数
+    column_num = int(length / 6)+1  # 网格列数，此行还需要修改，+1带有随意性
 
     #------------------------------
     #创建张量（全部日期）

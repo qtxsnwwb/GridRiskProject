@@ -283,7 +283,7 @@ def st_prediction(dense_tensor, sparse_tensor, pred_time_steps, rank, time_lags,
     dim1 = sparse_tensor0.shape[0]
     dim2 = sparse_tensor0.shape[1]
     dim3 = sparse_tensor0.shape[2]
-    tensor_hat = np.zeros((dim1, dim2, pred_time_steps))
+    tensor_hat = np.zeros((dim1, dim2, pred_time_steps))      #创建包含所有预测结果的零张量
 
     for t in range(pred_time_steps):
         if t == 0:
@@ -292,11 +292,12 @@ def st_prediction(dense_tensor, sparse_tensor, pred_time_steps, rank, time_lags,
             tensor, U, V, X, A = BTTF(dense_tensor0, sparse_tensor0, init, rank, time_lags, maxiter[0], maxiter[1])
             X0 = X.copy()
         else:
+			#U和V为位置维度，X为时间维度，因此只需对X进行迭代更新即可
             sparse_tensor1 = sparse_tensor[:, :, 0: start_time + t]
             init = {"U": U, "V": V, "X": X0, "A": A}
             tensor, X = OnlineBTTF(sparse_tensor1[:, :, -1], init, time_lags, maxiter[2], maxiter[3])
             X0 = X.copy()
-        tensor_hat[:, :, t] = tensor[:, :, -1]
+        tensor_hat[:, :, t] = tensor[:, :, -1]     #预测的结果存储到tensor_hat张量中
         if (t + 1) % 40 == 0:
             print('Time step: {}'.format(t + 1))
 
@@ -312,27 +313,8 @@ def st_prediction(dense_tensor, sparse_tensor, pred_time_steps, rank, time_lags,
     return tensor_hat
 
 if __name__ == '__main__':
-    # A = np.array([[1,2],[3,4]])
-    # B = np.array([[5,6],[7,8],[9,10]])
-    # print(kr_prod(A,B))
-
-    # U = np.array([[1,2],[3,4]])
-    # V = np.array([[1,3],[2,4],[5,6]])
-    # X = np.array([[1,5],[2,6],[3,7],[4,8]])
-    # print(cp_combine(U, V, X))
-    # print(cp_combine(U, V, X).shape)
-
-    X = np.array([[[1, 2, 3, 4], [3, 4, 5, 6]], [[5, 6, 7, 8], [7, 8, 9, 10]], [[9, 10, 11, 12], [11, 12, 13, 14]]])
-    print('tensor size:')
-    print(X.shape)
-    print('original tensor:')
-    print(X)
-    print()
-    print('(1) mode-1 tensor unfolding:')
-    print(ten2mat(X, 0))
-    print()
-    print('(2) mode-2 tensor unfolding:')
-    print(ten2mat(X, 1))
-    print()
-    print('(3) mode-3 tensor unfolding:')
-    print(ten2mat(X, 2))
+	X = np.random.rand(30, 30)
+	time_lags = np.array([1, 2, 24])
+	a = X[29-time_lags, :]
+	a = a.reshape([30*3])
+	print(a.shape)
