@@ -182,10 +182,6 @@ def constructGridMatrix():
     构建水域网格化矩阵
     :return:
     """
-	global LAT_MAX
-	global LON_MAX
-	global LAT_MIN
-	global LON_MIN
     length = vm.getDistance(LAT_MAX, LON_MAX, LAT_MAX, LON_MIN)  # 网格区域长度
     width = vm.getDistance(LAT_MAX, LON_MAX, LAT_MIN, LON_MAX)  # 网格区域宽度
     row_num = int(width / 6)  # 网格行数
@@ -199,7 +195,7 @@ def constructGridMatrix():
     root_path = "E:\成山头数据\\risk"
     dirs = os.listdir(root_path)
     for dir in dirs:
-        gridTensor = np.zeros((24, row_num, column_num))
+        gridTensor = np.zeros((24, row_num, column_num))    #创建张量
         tensor_index = 0
         dir_path = root_path + "\\" + str(dir)
         #遍历一日所有时刻的文件
