@@ -3,6 +3,8 @@ from numpy.random import multivariate_normal as mvnrnd
 from scipy.stats import wishart
 from scipy.stats import invwishart
 from numpy.linalg import inv as inv
+import scipy.io as scio
+import sys
 
 def kr_prod(a, b):
     """
@@ -75,7 +77,7 @@ def mnrnd(M, U, V):
     return M + np.matmul(np.matmul(P, X0), Q.T)
 
 
-def BTTF(dense_tensor, sparse_tensor, init, rank, time_lags, maxiter1, maxiter2):
+def BTTF(sparse_tensor, init, rank, time_lags, maxiter1, maxiter2):
     """Bayesian Temporal Tensor Factorization, BTTF."""
     U = init["U"]
     V = init["V"]
@@ -84,7 +86,7 @@ def BTTF(dense_tensor, sparse_tensor, init, rank, time_lags, maxiter1, maxiter2)
     d = time_lags.shape[0]
     dim1, dim2, dim3 = sparse_tensor.shape
     dim = np.array([dim1, dim2, dim3])
-    pos = np.where((dense_tensor != 0) & (sparse_tensor == 0))
+    # pos = np.where((dense_tensor != 0) & (sparse_tensor == 0))
     position = np.where(sparse_tensor != 0)
     binary_tensor = np.zeros((dim1, dim2, dim3))
     binary_tensor[position] = 1
@@ -198,11 +200,11 @@ def BTTF(dense_tensor, sparse_tensor, init, rank, time_lags, maxiter1, maxiter2)
 
         tau = np.random.gamma(alpha + 0.5 * sparse_tensor[position].shape[0],
                               1 / (beta + 0.5 * np.sum((sparse_tensor - tensor_hat)[position] ** 2)))
-        rmse = np.sqrt(np.sum((dense_tensor[pos] - tensor_hat[pos]) ** 2) / dense_tensor[pos].shape[0])
-        if (iters + 1) % 200 == 0 and iters < maxiter1 - maxiter2:
-            print('Iter: {}'.format(iters + 1))
-            print('RMSE: {:.6}'.format(rmse))
-            print()
+        # rmse = np.sqrt(np.sum((dense_tensor[pos] - tensor_hat[pos]) ** 2) / dense_tensor[pos].shape[0])
+        # if (iters + 1) % 200 == 0 and iters < maxiter1 - maxiter2:
+        #     print('Iter: {}'.format(iters + 1))
+        #     print('RMSE: {:.6}'.format(rmse))
+        #     print()
 
     U = U_plus / maxiter2
     V = V_plus / maxiter2
@@ -210,13 +212,13 @@ def BTTF(dense_tensor, sparse_tensor, init, rank, time_lags, maxiter1, maxiter2)
     X_new = X_new_plus / maxiter2
     A = A_plus / maxiter2
     tensor_hat = tensor_hat_plus / maxiter2
-    if maxiter1 >= 100:
-        final_mape = np.sum(np.abs(dense_tensor[pos]
-                                   - tensor_hat[pos]) / dense_tensor[pos]) / dense_tensor[pos].shape[0]
-        final_rmse = np.sqrt(np.sum((dense_tensor[pos] - tensor_hat[pos]) ** 2) / dense_tensor[pos].shape[0])
-        print('Imputation MAPE: {:.6}'.format(final_mape))
-        print('Imputation RMSE: {:.6}'.format(final_rmse))
-        print()
+    # if maxiter1 >= 100:
+    #     final_mape = np.sum(np.abs(dense_tensor[pos]
+    #                                - tensor_hat[pos]) / dense_tensor[pos]) / dense_tensor[pos].shape[0]
+    #     final_rmse = np.sqrt(np.sum((dense_tensor[pos] - tensor_hat[pos]) ** 2) / dense_tensor[pos].shape[0])
+    #     print('Imputation MAPE: {:.6}'.format(final_mape))
+    #     print('Imputation RMSE: {:.6}'.format(final_rmse))
+    #     print()
 
     return tensor_hat, U, V, X_new, A
 
@@ -277,9 +279,12 @@ def OnlineBTTF(sparse_mat, init, time_lags, maxiter1, maxiter2):
 
 
 def st_prediction(dense_tensor, sparse_tensor, pred_time_steps, rank, time_lags, maxiter):
+    #sparse_tensor是densor_tensor经过处理后的稀疏张量（按missing_rate的稀疏比）
+	# sparse_tensor是我们需要去处理的张量。densor_tensor是参照张量
     start_time = dense_tensor.shape[2] - pred_time_steps
     dense_tensor0 = dense_tensor[:, :, 0: start_time]
     sparse_tensor0 = sparse_tensor[:, :, 0: start_time]
+    # sparse_tensor0 = sparse_tensor
     dim1 = sparse_tensor0.shape[0]
     dim2 = sparse_tensor0.shape[1]
     dim3 = sparse_tensor0.shape[2]
@@ -289,11 +294,12 @@ def st_prediction(dense_tensor, sparse_tensor, pred_time_steps, rank, time_lags,
         if t == 0:
             init = {"U": 0.1 * np.random.rand(dim1, rank), "V": 0.1 * np.random.rand(dim2, rank),
                     "X": 0.1 * np.random.rand(dim3, rank)}
-            tensor, U, V, X, A = BTTF(dense_tensor0, sparse_tensor0, init, rank, time_lags, maxiter[0], maxiter[1])
+            tensor, U, V, X, A = BTTF(sparse_tensor0, init, rank, time_lags, maxiter[0], maxiter[1])
             X0 = X.copy()
         else:
-			#U和V为位置维度，X为时间维度，因此只需对X进行迭代更新即可
+            #U和V为位置维度，X为时间维度，因此只需对X进行迭代更新即可
             sparse_tensor1 = sparse_tensor[:, :, 0: start_time + t]
+            # sparse_tensor1 = tensor_hat[:, :, 0: t]
             init = {"U": U, "V": V, "X": X0, "A": A}
             tensor, X = OnlineBTTF(sparse_tensor1[:, :, -1], init, time_lags, maxiter[2], maxiter[3])
             X0 = X.copy()
@@ -313,8 +319,29 @@ def st_prediction(dense_tensor, sparse_tensor, pred_time_steps, rank, time_lags,
     return tensor_hat
 
 if __name__ == '__main__':
-	X = np.random.rand(30, 30)
-	time_lags = np.array([1, 2, 24])
-	a = X[29-time_lags, :]
-	a = a.reshape([30*3])
-	print(a.shape)
+    # tensor = scipy.io.loadmat("E:\\transdim\\datasets\\NYC-data-set\\tensor.mat")
+    # dense_tensor = tensor['tensor']
+    # print(dense_tensor.shape)
+    # print(len(np.where(dense_tensor == 0)[0]))
+    # print(len(np.where(dense_tensor == 0)[0])/30/30/1464)
+    #
+    # rm_tensor = scipy.io.loadmat("E:\\transdim\\datasets\\NYC-data-set\\rm_tensor.mat")
+    # rm_tensor = rm_tensor['rm_tensor']
+    #
+    # missing_rate = 0.1
+    #
+    # binary_tensor = np.round(rm_tensor + 0.5 - missing_rate)
+    #
+    # sparse_tensor = np.multiply(dense_tensor, binary_tensor)
+    # print(sparse_tensor.shape)
+    # print(len(np.where(sparse_tensor == 0)[0]))
+    # print(len(np.where(sparse_tensor == 0)[0])/30/30/1464)
+
+    data = scio.loadmat("E:\成山头数据\\data.mat")
+    gridTensor = data["tensor"]
+    pred_time_steps = 5     #预测的时间
+    rank = 21       #秩
+    time_lags = np.array([1, 2, 24])
+    maxiter = np.array([200, 100, 200, 100])
+    tensor_hat = st_prediction(gridTensor, gridTensor, pred_time_steps, rank, time_lags, maxiter)
+    # print(tensor_hat[:, :, 23])

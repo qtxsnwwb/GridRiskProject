@@ -6,6 +6,7 @@ import VCRO_Model as vm
 import csv
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.io as scio
 
 LAT_MAX = 37.8
 LON_MAX = 123.375
@@ -180,23 +181,24 @@ def gridPatition():
 def constructGridMatrix():
     """
     构建水域网格化矩阵
-    :return:
+    :return: 网格张量
     """
     length = vm.getDistance(LAT_MAX, LON_MAX, LAT_MAX, LON_MIN)  # 网格区域长度
     width = vm.getDistance(LAT_MAX, LON_MAX, LAT_MIN, LON_MAX)  # 网格区域宽度
-    row_num = int(width / 6)  # 网格行数
-    column_num = int(length / 6)+1  # 网格列数，此行还需要修改，+1带有随意性
-
-    #------------------------------
-    #创建张量（全部日期）
-    #------------------------------
+    # row_num = int(width / 2)  # 网格行数
+    # column_num = int(length / 2)+1  # 网格列数，此行还需要修改，+1带有随意性
+    row_num = 21  # 网格行数
+    column_num = 21  # 网格列数
 
     #遍历风险文件
     root_path = "E:\成山头数据\\risk"
     dirs = os.listdir(root_path)
+    # 创建张量（全部日期）(7*7*dayx24)
+    gridTensor = np.zeros((row_num, column_num, len(dirs)*24))
+    dayTemp = 1  # 表征日数临时变量，用于决定gridTensor_day写入gridTensor第几日
     for dir in dirs:
-        gridTensor = np.zeros((24, row_num, column_num))    #创建张量
-        tensor_index = 0
+        gridTensor_day = np.zeros((row_num, column_num, 24))    #创建日张量(7*7*24)
+        tensor_index = 0    #日张量slice索引
         dir_path = root_path + "\\" + str(dir)
         #遍历一日所有时刻的文件
         gridArray = np.zeros((row_num, column_num))   # 创建水域网格化矩阵（初始值均为0）
@@ -214,13 +216,18 @@ def constructGridMatrix():
             if file % 3600 == 0:
                 if file != 86400:
                     gridArray /= 4
-                    gridTensor[tensor_index, :, :] = gridArray   #将gridArray加入张量中
+                    gridTensor_day[:, :, tensor_index] = gridArray   #将gridArray加入张量中
                     tensor_index += 1
                     gridArray = np.zeros((row_num, column_num))  #重新创建水域网格化矩阵（初始值均为0）
                 else:
                     gridArray /= 3
-                    gridTensor[tensor_index, :, :] = gridArray   #将gridArray加入张量中
-    print(gridTensor)
+                    gridTensor_day[:, :, tensor_index] = gridArray   #将gridArray加入张量中
+
+        gridTensor[:, :, (dayTemp-1)*24 : dayTemp*24] = gridTensor_day      #将gridTensor_day写入gridTensor
+        dayTemp += 1
+    #计算稀疏率
+    # print(len(np.where(gridTensor == 0)[0])/21/21/48)
+    return gridTensor
 
 
 
@@ -237,9 +244,9 @@ def generalID(lon, lat, column_num, row_num):
     if lon <= LON_MIN or lon >= LON_MAX or lat <= LAT_MIN or lat >= LAT_MAX:
         return -1, -1
     #把经度范围根据列数等分切割
-    column = 6
+    column = 2
     #把纬度范围根据行数等分切割
-    row = 6
+    row = 2
     #计算行列号
     column = int(vm.getDistance(lat, lon, lat, LON_MIN) / column)
     row = int(vm.getDistance(lat, lon, LAT_MAX, lon) / row)
@@ -253,7 +260,11 @@ if __name__ == '__main__':
     #网格化，此处获取网格边界，然后人为划分，不同的数据集需要重新敲定
     # gridPatition()
     #构建网格化水域张量
-    constructGridMatrix()
+    gridTensor = constructGridMatrix()
+    #保存张量到mat文件
+    data_path = "E:\成山头数据\\data.mat"
+    scio.savemat(data_path, {"tensor":gridTensor})
+
 
 
 
