@@ -7,6 +7,7 @@ import csv
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as scio
+from KDEpy import FFTKDE
 
 LAT_MAX = 37.8
 LON_MAX = 123.375
@@ -216,20 +217,91 @@ def constructGridMatrix():
             if file % 3600 == 0:
                 if file != 86400:
                     gridArray /= 4
+                    gridArray = get_kde(gridArray)     #KDE，使风险矩阵更为平滑
+                    gridArray = np.exp(gridArray)      #对风险矩阵做exp处理，防止稀疏
                     gridTensor_day[:, :, tensor_index] = gridArray   #将gridArray加入张量中
                     tensor_index += 1
                     gridArray = np.zeros((row_num, column_num))  #重新创建水域网格化矩阵（初始值均为0）
                 else:
                     gridArray /= 3
+                    gridArray = get_kde(gridArray)     #KDE，使风险矩阵更为平滑
+                    gridArray = np.exp(gridArray)      #对风险矩阵做exp处理，防止稀疏
                     gridTensor_day[:, :, tensor_index] = gridArray   #将gridArray加入张量中
 
         gridTensor[:, :, (dayTemp-1)*24 : dayTemp*24] = gridTensor_day      #将gridTensor_day写入gridTensor
         dayTemp += 1
     #计算稀疏率
-    # print(len(np.where(gridTensor == 0)[0])/21/21/48)
+    # print("稀疏率：{}".format(len(np.where(gridTensor == 1)[0])/21/21/48))
     return gridTensor
 
+def get_kde(gridArray):
+    """
+    对风险矩阵做KDE，降低稀疏率
+    :param gridArray: 待处理风险矩阵
+    :return:
+    """
+    #找到矩阵中的非零值
+    tempArray = np.nonzero(gridArray)
+    data = np.zeros((tempArray[0].T.shape[0], 2))     #数据矩阵
+    data[:, 0] = tempArray[0].T
+    data[:, 1] = tempArray[1].T
+    rows = data.shape[0]
+    weights = []
+    for i in range(rows):
+        weights.append(gridArray[int(data[i, 0]), int(data[i, 1])])
 
+    # fig = plt.figure(figsize=(2,1))
+    # ax = fig.add_subplot(1,2,1)
+    # bx = fig.add_subplot(1,2,2)
+    # datai = np.zeros((gridArray.shape[0]*gridArray.shape[1], 2))
+    # dataj = []
+    # temp = 0
+    # for i in range(len(gridArray)):
+    #     for j in range(len(gridArray)):
+    #         datai[temp, :] = np.array([i, j])
+    #         dataj.append(gridArray[i, j])
+    #         temp += 1
+
+    grid_points = gridArray.shape[0]       #矩阵行（列）数
+    kde = FFTKDE(kernel='gaussian', norm=2, bw=0.5)
+    grid, points = kde.fit(data, weights=weights).evaluate(grid_points)
+    x, y = np.unique(grid[:, 0]), np.unique(grid[:, 1])
+    resultArray = points.reshape(grid_points, grid_points).T
+
+    # ax.contour(x,y,resultArray, 16, linewidths=0.8, colors='k')
+    # ax.contourf(x,y,resultArray, 16, cmap='RdBu_r')
+    # ax.plot(data[:, 0], data[:, 1], 'ok', ms=3)
+
+    #原矩阵构图
+    # grid, points = kde.fit(datai, weights=dataj).evaluate(grid_points)
+    # x, y = np.unique(grid[:, 0]), np.unique(grid[:, 1])
+    # z = points.reshape(grid_points, grid_points).T
+    # z = RotateMatrix(z)     #z旋转90度
+    # bx.contour(x, y, z, 16, linewidths=0.8, colors='k')
+    # bx.contourf(x, y, z, 16, cmap='RdBu_r')
+
+    # plt.tight_layout()
+    # plt.show()
+
+    # print(gridArray)
+    # print(resultArray)
+    return resultArray
+
+def RotateMatrix(arr):
+    tr = tc = 0
+    dr = len(arr)-1
+    dc = len(arr[0])-1
+    while tr<dr:
+        #因为等于的时候就一个数所以不用旋转了
+        for i in range(dc-tc):
+            tmp = arr[tr][tc+i]
+            arr[tr][tc+i] = arr[dr-i][tc]
+            arr[dr-i][tc] = arr[dr][dc-i]
+            arr[dr][dc-i] = arr[tr+i][dc]
+            arr[tr+i][dc] = tmp
+        tr= tc =tr+1
+        dc =dr = dc-1
+    return arr
 
 def generalID(lon, lat, column_num, row_num):
     """
@@ -253,17 +325,26 @@ def generalID(lon, lat, column_num, row_num):
     return row, column
 
 if __name__ == '__main__':
+    # pass
     # root_path = "E:\成山头数据\\data\\"
     # dirs = os.listdir(root_path)
     # for dir in dirs:
     #     writeRisk(str(dir))
     #网格化，此处获取网格边界，然后人为划分，不同的数据集需要重新敲定
     # gridPatition()
-    #构建网格化水域张量
+    # 构建网格化水域张量
     gridTensor = constructGridMatrix()
     #保存张量到mat文件
     data_path = "E:\成山头数据\\data.mat"
     scio.savemat(data_path, {"tensor":gridTensor})
+
+    # X = np.array([[1,1], [1,2], [1,3], [2,1], [2,3], [2,4]])
+    # Y = np.array([[1,3], [2,3], [3,4]])
+    # kde = KernelDensity(kernel='gaussian', bandwidth=0.75).fit(X)
+    # log_dens = kde.score_samples(Y)
+    # print(np.exp(log_dens))
+
+
 
 
 

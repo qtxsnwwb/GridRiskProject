@@ -4,6 +4,7 @@ from scipy.stats import wishart
 from scipy.stats import invwishart
 from numpy.linalg import inv as inv
 import scipy.io as scio
+import matplotlib.pyplot as plt
 import sys
 
 def kr_prod(a, b):
@@ -309,10 +310,8 @@ def st_prediction(dense_tensor, sparse_tensor, pred_time_steps, rank, time_lags,
 
     small_dense_tensor = dense_tensor[:, :, start_time: dense_tensor.shape[2]]
     pos = np.where(small_dense_tensor != 0)
-    final_mape = np.sum(np.abs(small_dense_tensor[pos] -
-                               tensor_hat[pos]) / small_dense_tensor[pos]) / small_dense_tensor[pos].shape[0]
-    final_rmse = np.sqrt(np.sum((small_dense_tensor[pos] -
-                                 tensor_hat[pos]) ** 2) / small_dense_tensor[pos].shape[0])
+    final_mape = np.sum(np.abs(small_dense_tensor[pos] - tensor_hat[pos]) / small_dense_tensor[pos]) / small_dense_tensor[pos].shape[0]
+    final_rmse = np.sqrt(np.sum((small_dense_tensor[pos] - tensor_hat[pos]) ** 2) / small_dense_tensor[pos].shape[0])
     print('Final MAPE: {:.6}'.format(final_mape))
     print('Final RMSE: {:.6}'.format(final_rmse))
     print()
@@ -344,4 +343,21 @@ if __name__ == '__main__':
     time_lags = np.array([1, 2, 24])
     maxiter = np.array([200, 100, 200, 100])
     tensor_hat = st_prediction(gridTensor, gridTensor, pred_time_steps, rank, time_lags, maxiter)
-    # print(tensor_hat[:, :, 23])
+    tensor_hat = np.log(tensor_hat)
+    # print(tensor_hat[:,:,0])
+    # print(tensor_hat[:,:,1])
+    # print(tensor_hat[:,:,2])
+    fig = plt.figure(figsize=(2, 2))
+    ax = fig.add_subplot(3,2,1)
+    ax2 = fig.add_subplot(3,2,2)
+    bx = fig.add_subplot(3,2,3)
+    bx2 = fig.add_subplot(3,2,4)
+    cx = fig.add_subplot(3,2,5)
+    cx2 = fig.add_subplot(3,2,6)
+    ax.matshow(tensor_hat[:,:,0])
+    ax2.matshow(gridTensor[:,:,43])
+    bx.matshow(tensor_hat[:,:,1])
+    bx2.matshow(gridTensor[:,:,44])
+    cx.matshow(tensor_hat[:,:,2])
+    cx2.matshow(gridTensor[:,:,45])
+    plt.show()
