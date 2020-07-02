@@ -2,6 +2,7 @@ from math import *
 import csv
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 
 def getDistance(lat1, lon1, lat2, lon2):
     """
@@ -110,6 +111,8 @@ def getPhase_plus_minus(lat1, lon1, lat2, lon2, c1, c2, lat1_past, lon1_past, la
     else:
         k2_normal = -1 / k2
     #计算两船直线方程交点
+    if k1 == k2:       #若两船斜率航向相同，则直接返回无碰撞风险
+        return False
     b1 = lat1 - k1 * lon1
     b2 = lat2 - k2 * lon2
     x_cross = (b2 - b1) / (k1 - k2)
@@ -161,6 +164,8 @@ def getK(c):
     return k
 
 def getVCRO(distance, relative_speed, phase):
+    if distance == 0:
+        return 0
     vcro = 3.87 * (distance**(-1)) * relative_speed * (sin(phase*pi/180) + 0.386 * sin(2*phase*pi/180))
     return vcro
 

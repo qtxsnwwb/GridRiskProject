@@ -227,11 +227,15 @@ def preprocessing_each(df):
                 temp_drop_list_2.append(i)
         time_sog_df = time_sog_df.drop(index=temp_drop_list_1)
         time_cog_df = time_cog_df.drop(index=temp_drop_list_2)
+        if len(time_sog_df) <= 3 or len(time_cog_df) <= 3:
+            continue
 
         #数据插值
         time_start = trajDf.iloc[0, 1]
         time_end = trajDf.iloc[rowsNum_temp-1, 1]
         t = getTimeRange(time_start, time_end)
+        if len(t) == 0:
+            continue
         X = time_lat_df.iloc[:, 1].values
         Y = time_lat_df.iloc[:, 2].values
         latArray = cubic_spline_latAndLon(X, Y, t)     #纬度插值结果
@@ -255,9 +259,10 @@ def preprocessing(date):
     :return:
     """
     # rankings_colname = ['Date_Time', 'Timestamp', 'Latitude', 'Longitude', 'Sog', 'Cog']
-    # df = pd.read_csv("E:\成山头数据\\2018-01-01\\413501110.csv", header=None, names=rankings_colname)
+    # df = pd.read_csv("E:\成山头数据\\data\\2018-01-19\\441828000.csv", header=None, names=rankings_colname)
     # tempDf = preprocessing_each(df)
     # print(tempDf)
+    # sys.exit(0)
 
 
     #创建目录

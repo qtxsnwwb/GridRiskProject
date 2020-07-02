@@ -25,7 +25,10 @@ def getPreviousRecord(currentTime, mmsi, date):
     previousTime = str(int(currentTime) - 300)     #前一时刻时间
     file_path = "E:\成山头数据\\result\\" + date + "\\" + previousTime + ".csv"
     rankings_colname = ['Mmsi', 'Latitude', 'Longitude', 'Sog', 'Cog']
-    df = pd.read_csv(file_path, header=None, names=rankings_colname)
+    try:
+        df = pd.read_csv(file_path, header=None, names=rankings_colname)
+    except Exception:
+        return None
     #遍历每条船舶
     rowsNum_df = df.shape[0]
     for i in range(rowsNum_df):
@@ -228,6 +231,8 @@ def constructGridMatrix():
                     gridArray = np.exp(gridArray)      #对风险矩阵做exp处理，防止稀疏
                     gridTensor_day[:, :, tensor_index] = gridArray   #将gridArray加入张量中
 
+            print("{}风险矩阵构造完毕".format(file_path))
+
         gridTensor[:, :, (dayTemp-1)*24 : dayTemp*24] = gridTensor_day      #将gridTensor_day写入gridTensor
         dayTemp += 1
     #计算稀疏率
@@ -238,8 +243,11 @@ def get_kde(gridArray):
     """
     对风险矩阵做KDE，降低稀疏率
     :param gridArray: 待处理风险矩阵
-    :return:
+    :return: KDE后的风险矩阵
     """
+    #判断风险矩阵是否为零矩阵，若是则返回原矩阵
+    if np.where(gridArray != 0)[0].shape[0] == 0:
+        return gridArray
     #找到矩阵中的非零值
     tempArray = np.nonzero(gridArray)
     data = np.zeros((tempArray[0].T.shape[0], 2))     #数据矩阵
@@ -265,7 +273,7 @@ def get_kde(gridArray):
     grid_points = gridArray.shape[0]       #矩阵行（列）数
     kde = FFTKDE(kernel='gaussian', norm=2, bw=0.5)
     grid, points = kde.fit(data, weights=weights).evaluate(grid_points)
-    x, y = np.unique(grid[:, 0]), np.unique(grid[:, 1])
+    # x, y = np.unique(grid[:, 0]), np.unique(grid[:, 1])
     resultArray = points.reshape(grid_points, grid_points).T
 
     # ax.contour(x,y,resultArray, 16, linewidths=0.8, colors='k')
@@ -326,9 +334,11 @@ def generalID(lon, lat, column_num, row_num):
 
 if __name__ == '__main__':
     # pass
-    # root_path = "E:\成山头数据\\data\\"
+    # root_path = "E:\成山头数据\\result\\"
     # dirs = os.listdir(root_path)
     # for dir in dirs:
+    #     if str(dir) <= "2018-01-07":
+    #         continue
     #     writeRisk(str(dir))
     #网格化，此处获取网格边界，然后人为划分，不同的数据集需要重新敲定
     # gridPatition()

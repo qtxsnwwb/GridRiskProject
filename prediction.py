@@ -338,6 +338,22 @@ if __name__ == '__main__':
 
     data = scio.loadmat("E:\成山头数据\\data.mat")
     gridTensor = data["tensor"]
+
+    sliceNum = gridTensor.shape[2]
+    temp = len(np.where(gridTensor == 1)[0])
+    print(temp/(gridTensor.shape[0]*gridTensor.shape[1]*gridTensor.shape[2]))
+    sys.exit(0)
+
+
+    fig = plt.figure(figsize=(10, sliceNum/10+1))
+    temp = 0
+    for i in range(30,50,1):
+        temp += 1
+        ax = fig.add_subplot(4, 5, temp)
+        ax.matshow(gridTensor[:, :, i])
+    plt.show()
+
+
     pred_time_steps = 5     #预测的时间
     rank = 21       #秩
     time_lags = np.array([1, 2, 24])
